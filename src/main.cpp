@@ -3,10 +3,16 @@
 #include <IRCClient.h>
 #include "config/wlan.h"
 #include "config/twitch.h"
+#include <ArtnetWiFi.h>
+#include "config/artnet.h"
 
 WiFiClient wiFiClient;
 String ircChannel = "#" + twitchChannelName;
 IRCClient client(IRC_SERVER, IRC_PORT, wiFiClient);
+ArtnetWiFiSender artnet;
+
+const uint16_t size = 512; // We are only using channel zero
+uint8_t data[size];
 
 void connectWifi()
 {
@@ -61,14 +67,21 @@ void callback(IRCMessage ircMessage)
     // {
     // }
 
-    // if (ircMessage.text == "!licht")
-    // {
-    //   sendTwitchMessage("Du kannst das Licht mit folgenden Befehlen steuern: Jeweils !strobo !stroborot !strobogrün !stroboblau !stroborosa !strobogelb !stroboorange !strobolila !stroboblauweiß !strobobunt !911 !blauweiß !gelbblau !rotweiß !grünrosa !grünlila !weiß !rot !grün !blau !rosa !gelb !orange !lila");
-    // }
-    // else if (ircMessage.text == "!strobo" || ircMessage.text == "!stroboweiß")
-    // {
-    //   strobe(colorWhite, colorBlack, DEFAULT_STROBO_LENGTH);
-    // }
+    if (ircMessage.text == "!licht")
+    {
+      sendTwitchMessage("Du kannst das Licht mit folgenden Befehlen steuern: !strobo !stroborot !strobogrün !stroboblau !stroborosa !strobogelb !stroboorange !strobolila !stroboblauweiß !strobobunt !911 !blauweiß !gelbblau !rotweiß !grünrosa !grünlila !weiß !rot !grün !blau !rosa !gelb !orange !lila");
+    }
+    else if (ircMessage.text == "!strobo" || ircMessage.text == "!stroboweiß")
+    {
+      // send(const String &ip, const uint32_t universe_, const uint8_t *const data, const uint16_t size)
+      data[0] = 3;
+      data[1] = 3;
+      artnet.send(ARTNET_TARGET_IP, ARTNET_NET, ARTNET_SUBNET, ARTNET_UNIVERSE, data, size);
+      delay(2000);
+      data[0] = 1;
+      data[1] = 1;
+      artnet.send(ARTNET_TARGET_IP, ARTNET_NET, ARTNET_SUBNET, ARTNET_UNIVERSE, data, size);
+    }
     // else if (ircMessage.text == "!stroborot")
     // {
     //   strobe(colorRed, colorBlack, DEFAULT_STROBO_LENGTH);
@@ -199,6 +212,12 @@ void setup()
 
   // Initialise IRC
   client.setCallback(callback);
+
+  artnet.begin();
+
+  data[0] = 2;
+  data[1] = 2;
+  artnet.send(ARTNET_TARGET_IP, ARTNET_NET, ARTNET_SUBNET, ARTNET_UNIVERSE, data, size);
 }
 
 void loop()
@@ -224,4 +243,6 @@ void loop()
     return;
   }
   client.loop();
+
+  delay(5000);
 }
